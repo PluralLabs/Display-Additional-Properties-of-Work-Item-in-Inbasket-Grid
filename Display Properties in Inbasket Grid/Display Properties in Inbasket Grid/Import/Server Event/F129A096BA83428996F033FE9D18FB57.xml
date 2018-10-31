@@ -1,0 +1,14 @@
+﻿<AML>
+ <Item type="Server Event" id="F129A096BA83428996F033FE9D18FB57" action="add">
+  <event_version>version_1</event_version>
+  <is_required>0</is_required>
+  <related_id keyed_name="Task AfterGet" type="Method">
+   <Item type="Method" action="get" select="id">
+    <name>Task AfterGet</name>
+   </Item>
+  </related_id>
+  <server_event>onAfterGet</server_event>
+  <sort_order>1280</sort_order>
+  <source_id keyed_name="InBasket Task" type="ItemType" name="InBasket Task">BC7977377FFF40D59FF14205914E9C71</source_id>
+ </Item>
+</AML>

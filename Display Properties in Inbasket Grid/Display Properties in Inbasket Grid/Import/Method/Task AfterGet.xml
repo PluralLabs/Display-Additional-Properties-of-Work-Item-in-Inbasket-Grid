@@ -1,0 +1,148 @@
+﻿<AML>
+ <Item type="Method" id="506D5C1DCC1F435DA2F400B639E467CC" action="add">
+  <execution_allowed_to keyed_name="World" type="Identity">A73B655731924CD0B027E4F4D5FCC0A9</execution_allowed_to>
+  <method_code><![CDATA[/*
+Summary
+--------------------------------------------------------------------------------------------------------------
+
+			
+Sl.No       Change Description                	        Created by/Modified by          Created/Modified Date
+
+1          Changes made for displaying                   Premal Bhagat                   31 October 2018
+           property in Inbasket Grid 
+-------------------------------------------------------------------------------------------------------------- 
+*/
+int count = this.getItemCount();
+if (count < 1) 
+{
+	return this;
+}
+
+string[] identityList = Aras.Server.Security.Permissions.Current.IdentitiesList.Split(new[] { "," }, StringSplitOptions.RemoveEmptyEntries);
+var identityHash = new HashSet<string>(identityList.Select(id => id.Trim(new[] { '\'' })));
+
+for (int i = 0; i < count; i++)
+{
+	Item itm = this.getItemByIndex(i);
+	string assignedTo = itm.getProperty("assigned_to", "");
+	bool isAssigned = identityHash.Contains(assignedTo);
+	if (isAssigned)
+	{
+		itm.setProperty("classification", "My");
+	}
+	else
+	{
+		itm.removeProperty("classification");
+	}
+	itm.setProperty("my_assignment", isAssigned ? "1" : "0");
+
+	Innovator inn = this.getInnovator();
+	string itemType = String.Empty;
+	
+	if (itm.getType() == "InBasket Task")
+	{
+		string realItemTypeID = itm.getProperty("itemtype");
+		if (!String.IsNullOrEmpty(realItemTypeID))
+		{
+			Item realItemType = inn.getItemById("ItemType", realItemTypeID);
+			itemType = realItemType.getProperty("keyed_name");
+			
+			string Work_Item_keyed_name = itm.getPropertyAttribute("item","keyed_name");
+		    string Work_Item_type = itm.getPropertyAttribute("item","type");
+			if(Work_Item_type == "Express DCO" || Work_Item_type == "ECN" || Work_Item_type == "ECR" || Work_Item_type == "Part" || Work_Item_type == "CAD")
+			{
+			    string ItemAml ="<AML>"+
+                                "<Item type= '"+Work_Item_type+"' action='get'>"+
+                                "<keyed_name>"+Work_Item_keyed_name+"</keyed_name>"+
+                                "</Item>"+
+                                "</AML>";
+                Item Result = inn.applyAML(ItemAml);
+                string description = Result.getProperty("description");
+                if(description != null)
+                {
+                    itm.setProperty("description", description);
+                }
+			}
+			else if(Work_Item_type == "Express ECO")
+			{
+			    string new_item_id = "";
+			    string ItemAml ="<AML>"+
+                                "<Item type= '"+Work_Item_type+"' action='get'>"+
+                                "<keyed_name>"+Work_Item_keyed_name+"</keyed_name>"+
+                                "<Relationships>"+
+                                "<Item type= 'Express ECO Affected Item' action='get'>"+
+                                "<related_id>"+
+                                "<Item type= 'Affected Item' action='get'>"+
+                                "</Item>"+
+                                "</related_id>"+
+                                "</Item>"+
+                                "</Relationships>"+
+                                "</Item>"+
+                                "</AML>";
+                Item Result = inn.applyAML(ItemAml);
+               
+                int matcount = Result.getItemCount();
+                Item ImpactMatrix = Result.getItemsByXPath("//Item[@type='Affected Item']");
+                int ImpactMatrixCount = ImpactMatrix.getItemCount();
+                for(int j=0 ; j< ImpactMatrixCount; j++)
+                {
+                     if(string.IsNullOrEmpty(new_item_id))
+                        {
+                            new_item_id = ImpactMatrix.getItemByIndex(j).getPropertyAttribute("new_item_id","keyed_name");
+                        }
+                        else
+                        {
+                            new_item_id =  new_item_id +","+ ImpactMatrix.getItemByIndex(j).getPropertyAttribute("new_item_id","keyed_name");
+                        }
+                        itm.setProperty("description", new_item_id);
+                }
+            
+			}
+			else
+			{
+			    itm.setProperty("description", "NA");
+			}
+		}
+	}
+	else
+	{
+		itemType = itm.getType();
+	}
+
+	if (itemType == "Project Task")
+	{
+		string taskId = itm.getID();
+		string status = itm.getProperty("status");
+		Item activity2Assignment = null;
+
+		Item activity2 = inn.getItemById("Activity2", taskId);
+		if (activity2 == null)
+		{
+			activity2Assignment = inn.getItemById("Activity2 Assignment", taskId);
+			if (activity2Assignment != null)
+			{
+				activity2 = inn.getItemById("Activity2", activity2Assignment.getProperty("source_id"));
+			}
+		}
+
+		if (activity2 != null && !String.IsNullOrEmpty(activity2.getProperty("status")))
+		{
+			itm.setProperty("css", String.Format("{0}\n.start_date{{background-color:{1};}}\n.due_date{{background-color:{1};}}", itm.getProperty("css"), activity2.getProperty("status")));
+		}
+
+		if (activity2Assignment != null)
+		{
+			string assignmentState = activity2Assignment.getProperty("state");
+			if (!string.Equals(assignmentState, status, StringComparison.Ordinal))
+			{
+				itm.setProperty("status", assignmentState);
+			}
+		}
+	}
+}
+
+return this;]]></method_code>
+  <method_type>C#</method_type>
+  <name>Task AfterGet</name>
+ </Item>
+</AML>
